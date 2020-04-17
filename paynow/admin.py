@@ -62,7 +62,6 @@ class WalletAdmin(admin.ModelAdmin):
     Transaction related logic implemented here
     """
     def save_model(self, request, obj, form, change):
-        import ipdb; ipdb.set_trace()
         if 'balance' in form.changed_data:
             object_present = self.model.objects.filter(id=obj.id)
             if change:
