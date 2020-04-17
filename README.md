@@ -53,7 +53,7 @@
     grant usage on *.* to myuser@localhost identified by 'mypasswd';
     grant all privileges on travclandb.* to myuser@localhost;
 
-obtain a dump of the database (convodb.sql from paynowdemo/travclandb.sql) and then add it to your local MySQL server  (ensure that you run MySQL from the directory with the dump file):
+obtain a dump of the database travclandb.sql and then add it to your local MySQL server  (ensure that you run MySQL from the directory with the dump file):
 
     use travclandb;
     source travclandb.sql;
