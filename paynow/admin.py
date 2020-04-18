@@ -1,3 +1,4 @@
+import datetime
 from django.contrib import admin, messages
 from django.db.models import Sum
 from paynow.models import Wallet, Transaction
@@ -12,6 +13,7 @@ class WalletAdmin(admin.ModelAdmin):
     list_display = ('id', 'user', 'total_money_addition', 'balance', 
         'total_money_paid', 'total_money_recieved')
     search_fields = ['id', 'user','wallet_address', 'balance']
+    current_month_range = datetime.datetime.now()
 
     
     """
@@ -19,7 +21,9 @@ class WalletAdmin(admin.ModelAdmin):
     """
     def total_money_addition(self, obj):
         total_money_added = Transaction.objects.filter(
-            user=obj.user, txn_type=CREDIT).aggregate(Sum('txn_amount'))
+            user=obj.user, txn_type=CREDIT,
+            added_on__month=self.current_month_range.month
+            ).aggregate(Sum('txn_amount'))
         return total_money_added.get('txn_amount__sum')
     total_money_addition.allow_tags = True
     total_money_addition.short_description = (
@@ -32,6 +36,7 @@ class WalletAdmin(admin.ModelAdmin):
     def total_money_paid(self, obj):
         total_money_added = Transaction.objects.filter(
             ~Q(reciever=obj.user),
+            added_on__month=self.current_month_range.month,
             user=obj.user, txn_type=SEND).aggregate(Sum('txn_amount'))
         return total_money_added.get('txn_amount__sum')
     total_money_paid.allow_tags = True
@@ -44,6 +49,7 @@ class WalletAdmin(admin.ModelAdmin):
     """
     def total_money_recieved(self, obj):
         total_money_added = Transaction.objects.filter(
+            added_on__month=self.current_month_range.month,
             reciever=obj.user, txn_type=SEND).aggregate(Sum('txn_amount'))
         return total_money_added.get('txn_amount__sum')
     total_money_recieved.allow_tags = True
