@@ -1,10 +1,9 @@
 import datetime
 from django.contrib import admin, messages
-from django.db.models import Sum
+from django.db.models import Sum, F, Q
 from paynow.models import Wallet, Transaction
 from .models import CREDIT, WITHDRAW, SEND, REQUEST
 from .forms import PayUserWalletForm
-from django.db.models import Q
 
 
 class WalletAdmin(admin.ModelAdmin):
@@ -17,14 +16,57 @@ class WalletAdmin(admin.ModelAdmin):
 
     
     """
+    Total money addition, Total Money paid, 
+    Total money recieved functions implemented in
+    queryset function to reduces numbber of queries
+    for each object
+    """
+    def get_queryset(self, request):
+        queryset = super(WalletAdmin, self).get_queryset(request)
+        
+        total_money_addition = Transaction.objects.values('user_id').annotate(
+            txn_amount_addition=Sum('txn_amount')).filter(
+            txn_type=CREDIT, 
+            added_on__month=self.current_month_range.month)
+        self.total_money_addition_dict = {}
+        for obj_add in total_money_addition:
+            self.total_money_addition_dict.update({
+                obj_add.get('user_id'):  obj_add.get('txn_amount_addition')})
+
+        
+        total_money_paid = Transaction.objects.values('user_id').annotate(
+            txn_amount_paid=Sum('txn_amount')).filter(
+            ~Q(reciever=F('user')),
+            added_on__month=self.current_month_range.month,
+            txn_type=SEND)
+        self.total_money_paid_dict = {}
+        for obj_paid in total_money_paid:
+            self.total_money_paid_dict.update({
+                obj_paid.get('user_id'):  obj_paid.get(
+                    'txn_amount_paid')})
+
+        
+        total_money_recieved = Transaction.objects.values(
+            'reciever_id').annotate(
+            txn_amount_recieved=Sum('txn_amount')).filter(
+            ~Q(reciever=F('user')),
+            added_on__month=self.current_month_range.month,
+            txn_type=SEND)
+        self.total_money_recieved_dict = {}
+        for obj_recieved in total_money_recieved:
+            self.total_money_recieved_dict.update({
+                obj_recieved.get('reciever_id'): obj_recieved.get(
+                    'txn_amount_recieved')})
+       
+        return queryset
+
+    
+    """
     Function to return total money added in current month
     """
     def total_money_addition(self, obj):
-        total_money_added = Transaction.objects.filter(
-            user=obj.user, txn_type=CREDIT,
-            added_on__month=self.current_month_range.month
-            ).aggregate(Sum('txn_amount'))
-        return total_money_added.get('txn_amount__sum')
+        return self.total_money_addition_dict.get(obj.user.id)
+        # return obj._total_money_addition
     total_money_addition.allow_tags = True
     total_money_addition.short_description = (
         'Total money added in current month')
@@ -34,11 +76,7 @@ class WalletAdmin(admin.ModelAdmin):
     Function to return total money paid in current month
     """
     def total_money_paid(self, obj):
-        total_money_added = Transaction.objects.filter(
-            ~Q(reciever=obj.user),
-            added_on__month=self.current_month_range.month,
-            user=obj.user, txn_type=SEND).aggregate(Sum('txn_amount'))
-        return total_money_added.get('txn_amount__sum')
+        return self.total_money_paid_dict.get(obj.user.id)
     total_money_paid.allow_tags = True
     total_money_paid.short_description = (
         'Total money paid to other users for current month')
@@ -48,10 +86,8 @@ class WalletAdmin(admin.ModelAdmin):
     Function to return total money recieved in current month
     """
     def total_money_recieved(self, obj):
-        total_money_added = Transaction.objects.filter(
-            added_on__month=self.current_month_range.month,
-            reciever=obj.user, txn_type=SEND).aggregate(Sum('txn_amount'))
-        return total_money_added.get('txn_amount__sum')
+        return self.total_money_recieved_dict.get(obj.user.id)
+        return obj._total_money_recieved
     total_money_recieved.allow_tags = True
     total_money_recieved.short_description = (
         'Total money recieved from other users for current month')
