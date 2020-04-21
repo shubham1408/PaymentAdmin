@@ -66,7 +66,6 @@ class WalletAdmin(admin.ModelAdmin):
     """
     def total_money_addition(self, obj):
         return self.total_money_addition_dict.get(obj.user.id)
-        # return obj._total_money_addition
     total_money_addition.allow_tags = True
     total_money_addition.short_description = (
         'Total money added in current month')
@@ -87,7 +86,6 @@ class WalletAdmin(admin.ModelAdmin):
     """
     def total_money_recieved(self, obj):
         return self.total_money_recieved_dict.get(obj.user.id)
-        return obj._total_money_recieved
     total_money_recieved.allow_tags = True
     total_money_recieved.short_description = (
         'Total money recieved from other users for current month')
@@ -139,11 +137,12 @@ from one user to another
 """
 class PayUserWalletAdmin(WalletAdmin):
 
-    fields = ['user', 'send_amount', 'send_to']
+    fields = ['from_user', 'send_amount', 'send_to']
+    list_display = ('id', 'user', 'balance')
     form = PayUserWalletForm
 
     def save_model(self, request, obj, form, change):
-        send_user_wallet = Wallet.objects.get(user=form.cleaned_data['user'])
+        send_user_wallet = Wallet.objects.get(user=form.cleaned_data['from_user'])
         if send_user_wallet.balance < form.cleaned_data['send_amount']:
             messages.info(request, "Not Enough Balance")
             return
@@ -154,7 +153,7 @@ class PayUserWalletAdmin(WalletAdmin):
         reciever_wallet.save()
         send_user_wallet.save()
         txn_data = {
-            'user': form.cleaned_data['user'],
+            'user': form.cleaned_data['from_user'],
             'txn_type': SEND,
             'txn_amount': form.cleaned_data['send_amount'], 
             'reciever': form.cleaned_data['send_to']

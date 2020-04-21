@@ -6,6 +6,7 @@ from .models import Wallet
 
 class PayUserWalletForm(forms.ModelForm):
 
+    from_user = forms.ModelChoiceField(queryset=User.objects.all())
     send_to = forms.ModelChoiceField(queryset=User.objects.all())
     send_amount = forms.IntegerField()
 
